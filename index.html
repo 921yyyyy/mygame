@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>爆速クソゲーシューティング・改</title>
+    <title>爆速クソゲーシューティング・真</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; touch-action: none; }
         canvas { display: block; background: #111; }
         #ui { position: absolute; top: 10px; left: 10px; color: #0f0; font-size: 20px; pointer-events: none; }
-        #msg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: red; font-size: 40px; text-align: center; display: none; pointer-events: auto; }
-        button { padding: 10px 20px; font-size: 20px; background: #0f0; border: none; cursor: pointer; }
+        #msg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: red; font-size: 30px; text-align: center; display: none; pointer-events: auto; background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px; }
+        button { margin-top: 15px; padding: 10px 20px; font-size: 20px; background: #0f0; border: none; cursor: pointer; }
     </style>
 </head>
 <body>
     <div id="ui">SCORE: <span id="score">0</span></div>
     <div id="msg">
-        <div>GAME OVER</div>
+        <div id="status">GAME OVER</div>
         <button onclick="location.reload()">もう一度遊ぶ</button>
     </div>
     <canvas id="gameCanvas"></canvas>
@@ -25,6 +25,7 @@
         const ctx = canvas.getContext('2d');
         const scoreElement = document.getElementById('score');
         const msg = document.getElementById('msg');
+        const statusText = document.getElementById('status');
 
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
@@ -42,75 +43,79 @@
             if (gameOver) return;
             const touch = e.touches[0];
             player.x = touch.clientX - player.w / 2;
-            
-            // --- 改修：弾の種類（1000点以上で3方向ショット） ---
-            if (score >= 1000) {
-                bullets.push({ x: player.x + player.w / 2 - 2, y: player.y, w: 4, h: 10, vx: 0 }); // 真ん中
-                bullets.push({ x: player.x + player.w / 2 - 2, y: player.y, w: 4, h: 10, vx: -2 }); // 左ななめ
-                bullets.push({ x: player.x + player.w / 2 - 2, y: player.y, w: 4, h: 10, vx: 2 });  // 右ななめ
-            } else {
-                bullets.push({ x: player.x + player.w / 2 - 2, y: player.y, w: 4, h: 10, vx: 0 });
-            }
+            // 改修：3方向を廃止し、1発のみ射出
+            bullets.push({ x: player.x + player.w / 2 - 2, y: player.y, w: 4, h: 10 });
         }
 
         function spawnEnemy() {
             if (gameOver) return;
 
-            // --- 改修：強い敵の出現判定（20%の確率） ---
-            const isStrong = Math.random() < 0.2;
-            if (isStrong) {
+            const rand = Math.random();
+            if (rand < 0.1) {
+                // 1. 超硬い中ボス (HP 30)
                 enemies.push({ 
-                    x: Math.random() * (canvas.width - 60), 
-                    y: -60, w: 60, h: 60, 
-                    hp: 3, // 3発耐える
-                    type: 'strong',
-                    speed: 1.5, // 少し遅い
-                    color: '#f0f' // 紫色
+                    x: Math.random() * (canvas.width - 70), y: -70, w: 70, h: 70, 
+                    hp: 30, type: 'boss', speed: 1, color: '#f0f' 
+                });
+            } else if (rand < 0.2) {
+                // 2. 味方 (撃つとゲームオーバー)
+                enemies.push({ 
+                    x: Math.random() * (canvas.width - 30), y: -30, w: 30, h: 30, 
+                    hp: 1, type: 'friend', speed: 3, color: '#0ff' 
+                });
+            } else if (rand < 0.4) {
+                // 3. 高速な敵 (200%速度)
+                enemies.push({ 
+                    x: Math.random() * (canvas.width - 25), y: -25, w: 25, h: 25, 
+                    hp: 1, type: 'fast', speed: 8, color: '#ffa500' 
                 });
             } else {
+                // 4. 通常の敵
                 enemies.push({ 
-                    x: Math.random() * (canvas.width - 30), 
-                    y: -30, w: 30, h: 30, 
-                    hp: 1, 
-                    type: 'normal',
-                    speed: 2 + Math.random() * 3,
-                    color: '#f00' // 赤色
+                    x: Math.random() * (canvas.width - 30), y: -30, w: 30, h: 30, 
+                    hp: 1, type: 'normal', speed: 3 + Math.random() * 2, color: '#f00' 
                 });
             }
             
-            setTimeout(spawnEnemy, 600);
+            setTimeout(spawnEnemy, 500);
         }
 
         function update() {
             if (gameOver) return;
 
-            bullets.forEach((b, i) => {
-                b.y -= 7;
-                b.x += b.vx || 0; // ななめ移動の処理を追加
-                if (b.y < 0 || b.x < 0 || b.x > canvas.width) bullets.splice(i, 1);
+            bullets.forEach((b, bi) => {
+                b.y -= 10;
+                if (b.y < 0) bullets.splice(bi, 1);
             });
 
             enemies.forEach((e, i) => {
                 e.y += e.speed;
                 if (e.y > canvas.height) {
-                    gameOver = true;
-                    msg.style.display = 'block';
+                    if (e.type !== 'friend') { // 味方が画面外に行くのはOK、敵はNG
+                        endGame("敵に突破された！");
+                    } else {
+                        enemies.splice(i, 1);
+                    }
                 }
 
                 bullets.forEach((b, bi) => {
                     if (b.x < e.x + e.w && b.x + b.w > e.x && b.y < e.y + e.h && b.y + b.h > e.y) {
-                        bullets.splice(bi, 1); // 弾が当たる
-                        e.hp -= 1; // HPを減らす
+                        bullets.splice(bi, 1);
                         
-                        // HPが0になったら敵を消す
+                        // 改修：味方を撃った判定
+                        if (e.type === 'friend') {
+                            endGame("味方を撃ってしまった！");
+                            return;
+                        }
+
+                        e.hp -= 1;
                         if (e.hp <= 0) {
                             enemies.splice(i, 1);
-                            score += (e.type === 'strong' ? 500 : 100); // 強い敵は高得点
+                            score += (e.type === 'boss' ? 1000 : (e.type === 'fast' ? 300 : 100));
                             scoreElement.innerText = score;
                         } else {
-                            // 強い敵がダメージを受けた時の視覚効果（少し白くする）
-                            e.color = '#ffbfff';
-                            setTimeout(() => { e.color = '#f0f'; }, 100);
+                            e.color = '#fff'; // 被弾フラッシュ
+                            setTimeout(() => { e.color = (e.type === 'boss' ? '#f0f' : e.color); }, 50);
                         }
                     }
                 });
@@ -120,18 +125,33 @@
             requestAnimationFrame(update);
         }
 
+        function endGame(text) {
+            gameOver = true;
+            statusText.innerText = text;
+            msg.style.display = 'block';
+        }
+
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            ctx.fillStyle = '#00f';
+            // 自機
+            ctx.fillStyle = '#fff';
             ctx.fillRect(player.x, player.y, player.w, player.h);
 
+            // 弾
             ctx.fillStyle = '#ff0';
             bullets.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
 
+            // 敵・味方
             enemies.forEach(e => {
                 ctx.fillStyle = e.color;
                 ctx.fillRect(e.x, e.y, e.w, e.h);
+                // ボスのみHPゲージを表示
+                if (e.type === 'boss') {
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '12px Arial';
+                    ctx.fillText('HP: ' + e.hp, e.x, e.y - 5);
+                }
             });
         }
 
@@ -140,3 +160,4 @@
     </script>
 </body>
 </html>
+
