@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>爆速クソゲーシューティング</title>
+    <title>爆速クソゲーシューティング・改</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; touch-action: none; }
         canvas { display: block; background: #111; }
@@ -35,7 +35,6 @@
         let bullets = [];
         let enemies = [];
 
-        // タッチ操作：指の場所に移動して弾を撃つ
         window.addEventListener('touchstart', handleTouch);
         window.addEventListener('touchmove', handleTouch);
 
@@ -43,13 +42,42 @@
             if (gameOver) return;
             const touch = e.touches[0];
             player.x = touch.clientX - player.w / 2;
-            // 指を動かすたびに弾が出る（クソゲー仕様）
-            bullets.push({ x: player.x + player.w / 2 - 2, y: player.y, w: 4, h: 10 });
+            
+            // --- 改修：弾の種類（1000点以上で3方向ショット） ---
+            if (score >= 1000) {
+                bullets.push({ x: player.x + player.w / 2 - 2, y: player.y, w: 4, h: 10, vx: 0 }); // 真ん中
+                bullets.push({ x: player.x + player.w / 2 - 2, y: player.y, w: 4, h: 10, vx: -2 }); // 左ななめ
+                bullets.push({ x: player.x + player.w / 2 - 2, y: player.y, w: 4, h: 10, vx: 2 });  // 右ななめ
+            } else {
+                bullets.push({ x: player.x + player.w / 2 - 2, y: player.y, w: 4, h: 10, vx: 0 });
+            }
         }
 
         function spawnEnemy() {
             if (gameOver) return;
-            enemies.push({ x: Math.random() * (canvas.width - 30), y: -30, w: 30, h: 30, speed: 2 + Math.random() * 3 });
+
+            // --- 改修：強い敵の出現判定（20%の確率） ---
+            const isStrong = Math.random() < 0.2;
+            if (isStrong) {
+                enemies.push({ 
+                    x: Math.random() * (canvas.width - 60), 
+                    y: -60, w: 60, h: 60, 
+                    hp: 3, // 3発耐える
+                    type: 'strong',
+                    speed: 1.5, // 少し遅い
+                    color: '#f0f' // 紫色
+                });
+            } else {
+                enemies.push({ 
+                    x: Math.random() * (canvas.width - 30), 
+                    y: -30, w: 30, h: 30, 
+                    hp: 1, 
+                    type: 'normal',
+                    speed: 2 + Math.random() * 3,
+                    color: '#f00' // 赤色
+                });
+            }
+            
             setTimeout(spawnEnemy, 600);
         }
 
@@ -58,7 +86,8 @@
 
             bullets.forEach((b, i) => {
                 b.y -= 7;
-                if (b.y < 0) bullets.splice(i, 1);
+                b.x += b.vx || 0; // ななめ移動の処理を追加
+                if (b.y < 0 || b.x < 0 || b.x > canvas.width) bullets.splice(i, 1);
             });
 
             enemies.forEach((e, i) => {
@@ -68,13 +97,21 @@
                     msg.style.display = 'block';
                 }
 
-                // 当たり判定
                 bullets.forEach((b, bi) => {
                     if (b.x < e.x + e.w && b.x + b.w > e.x && b.y < e.y + e.h && b.y + b.h > e.y) {
-                        enemies.splice(i, 1);
-                        bullets.splice(bi, 1);
-                        score += 100;
-                        scoreElement.innerText = score;
+                        bullets.splice(bi, 1); // 弾が当たる
+                        e.hp -= 1; // HPを減らす
+                        
+                        // HPが0になったら敵を消す
+                        if (e.hp <= 0) {
+                            enemies.splice(i, 1);
+                            score += (e.type === 'strong' ? 500 : 100); // 強い敵は高得点
+                            scoreElement.innerText = score;
+                        } else {
+                            // 強い敵がダメージを受けた時の視覚効果（少し白くする）
+                            e.color = '#ffbfff';
+                            setTimeout(() => { e.color = '#f0f'; }, 100);
+                        }
                     }
                 });
             });
@@ -86,17 +123,16 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // 自機（青）
             ctx.fillStyle = '#00f';
             ctx.fillRect(player.x, player.y, player.w, player.h);
 
-            // 弾（黄）
             ctx.fillStyle = '#ff0';
             bullets.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
 
-            // 敵（赤）
-            ctx.fillStyle = '#f00';
-            enemies.forEach(e => ctx.fillRect(e.x, e.y, e.w, e.h));
+            enemies.forEach(e => {
+                ctx.fillStyle = e.color;
+                ctx.fillRect(e.x, e.y, e.w, e.h);
+            });
         }
 
         spawnEnemy();
@@ -104,4 +140,3 @@
     </script>
 </body>
 </html>
-
