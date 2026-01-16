@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>爆速クソゲーシューティング・極</title>
+    <title>爆速クソゲーシューティング・バランス調整版</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; touch-action: none; }
         canvas { display: block; background: #111; }
@@ -43,9 +43,9 @@
         let bullets = [];
         let enemies = [];
         
-        // 弾の射出間隔を制御するフラグ
         let canShoot = true;
-        const shootInterval = 200; // ミリ秒（ここを増やすとさらにゆっくりになります）
+        // 改修：射出ペースを150%に（200ms / 1.5 ≒ 133ms）
+        const shootInterval = 133; 
 
         window.addEventListener('touchstart', handleTouch);
         window.addEventListener('touchmove', handleTouch);
@@ -55,7 +55,6 @@
             const touch = e.touches[0];
             player.x = touch.clientX - player.w / 2;
             
-            // 改修：射出ペースを制限
             if (canShoot) {
                 bullets.push({ x: player.x + player.w / 2 - 2, y: player.y, w: 4, h: 10 });
                 canShoot = false;
@@ -67,21 +66,20 @@
             if (gameOver) return;
 
             const rand = Math.random();
-            // 改修：味方の出現率を5%に設定
             if (rand < 0.05) {
-                // 味方 (撃つと即終了)
+                // 味方
                 enemies.push({ 
                     x: Math.random() * (canvas.width - 30), y: -30, w: 30, h: 30, 
                     hp: 1, type: 'friend', speed: 3, color: '#0ff' 
                 });
             } else if (rand < 0.15) {
-                // 中ボス (HP 30)
+                // 改修：中ボス (HP 15)
                 enemies.push({ 
                     x: Math.random() * (canvas.width - 70), y: -70, w: 70, h: 70, 
-                    hp: 30, type: 'boss', speed: 1, color: '#f0f' 
+                    hp: 15, type: 'boss', speed: 1, color: '#f0f' 
                 });
             } else if (rand < 0.35) {
-                // 高速な敵 (200%速度)
+                // 高速な敵
                 enemies.push({ 
                     x: Math.random() * (canvas.width - 25), y: -25, w: 25, h: 25, 
                     hp: 1, type: 'fast', speed: 8, color: '#ffa500' 
@@ -111,7 +109,7 @@
                     if (e.type !== 'friend') {
                         endGame("敵に突破された！");
                     } else {
-                        enemies.splice(i, i);
+                        enemies.splice(i, 1);
                     }
                 }
 
@@ -143,14 +141,11 @@
 
         function endGame(text) {
             gameOver = true;
-            
-            // ハイスコア保存処理
             if (score > highscore) {
                 highscore = score;
                 localStorage.setItem('mygame_highscore', highscore);
                 text = "NEW RECORD! " + text;
             }
-
             statusText.innerText = text;
             msg.style.display = 'block';
         }
