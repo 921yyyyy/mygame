@@ -15,7 +15,7 @@
 <body>
     <div id="ui">SCORE: <span id="score">0</span></div>
     <div id="msg">
-        <div>GAME OVER</div>
+        <div id="status">GAME OVER</div>
         <button onclick="location.reload()">もう一度遊ぶ</button>
     </div>
     <canvas id="gameCanvas"></canvas>
@@ -25,6 +25,7 @@
         const ctx = canvas.getContext('2d');
         const scoreElement = document.getElementById('score');
         const msg = document.getElementById('msg');
+        const statusText = document.getElementById('status');
 
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
@@ -49,7 +50,21 @@
 
         function spawnEnemy() {
             if (gameOver) return;
-            enemies.push({ x: Math.random() * (canvas.width - 30), y: -30, w: 30, h: 30, speed: 2 + Math.random() * 3 });
+            
+            // 5%の確率で味方が出現、それ以外は通常の敵
+            const isFriend = Math.random() < 0.05;
+            if (isFriend) {
+                enemies.push({ 
+                    x: Math.random() * (canvas.width - 30), y: -30, w: 30, h: 30, 
+                    speed: 2, type: 'friend', hp: 3, color: '#0ff' 
+                });
+            } else {
+                enemies.push({ 
+                    x: Math.random() * (canvas.width - 30), y: -30, w: 30, h: 30, 
+                    speed: 2 + Math.random() * 3, type: 'enemy', hp: 1, color: '#f00' 
+                });
+            }
+            
             setTimeout(spawnEnemy, 600);
         }
 
@@ -64,17 +79,34 @@
             enemies.forEach((e, i) => {
                 e.y += e.speed;
                 if (e.y > canvas.height) {
-                    gameOver = true;
-                    msg.style.display = 'block';
+                    // 通常の敵が通り抜けたらゲームオーバー（味方はスルーしてOK）
+                    if (e.type !== 'friend') {
+                        gameOver = true;
+                        statusText.innerText = "敵に突破された！";
+                        msg.style.display = 'block';
+                    } else {
+                        enemies.splice(i, 1);
+                    }
                 }
 
                 // 当たり判定
                 bullets.forEach((b, bi) => {
                     if (b.x < e.x + e.w && b.x + b.w > e.x && b.y < e.y + e.h && b.y + b.h > e.y) {
-                        enemies.splice(i, 1);
                         bullets.splice(bi, 1);
-                        score += 100;
-                        scoreElement.innerText = score;
+                        e.hp -= 1;
+
+                        if (e.hp <= 0) {
+                            if (e.type === 'friend') {
+                                // 味方を倒すとゲームオーバー
+                                gameOver = true;
+                                statusText.innerText = "味方を撃ってしまった！";
+                                msg.style.display = 'block';
+                            } else {
+                                enemies.splice(i, 1);
+                                score += 100;
+                                scoreElement.innerText = score;
+                            }
+                        }
                     }
                 });
             });
@@ -94,9 +126,11 @@
             ctx.fillStyle = '#ff0';
             bullets.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
 
-            // 敵（赤）
-            ctx.fillStyle = '#f00';
-            enemies.forEach(e => ctx.fillRect(e.x, e.y, e.w, e.h));
+            // 敵（赤）と味方（水色）
+            enemies.forEach(e => {
+                ctx.fillStyle = e.color;
+                ctx.fillRect(e.x, e.y, e.w, e.h);
+            });
         }
 
         spawnEnemy();
