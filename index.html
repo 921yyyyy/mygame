@@ -49,7 +49,7 @@
         let canShoot = true;
         const shootInterval = 133; 
 
-        // 部長モードフラグ
+        // 部長モードフラグ（本番用：出現率5%）
         let isBuchoMode = Math.random() < 0.05; 
         let isBuchoEventActive = false;
         let isSpeedyHell = false;
@@ -104,15 +104,14 @@
             const rand = Math.random();
             let nextSpawnDelay = 600;
             
-            // --- 部長モード：オレンジ地獄 ---
+            // --- 部長モード：オレンジ地獄（15倍） ---
             if (isSpeedyHell) {
-                // 高速敵のみ100%出現
                 enemies.push({ 
                     x: Math.random() * (canvas.width - 25), y: -25, w: 25, h: 25, 
                     hp: 1, type: 'fast', speed: 8, color: '#ffa500' 
                 });
-                // 通常の4倍の頻度（600msの4分の1 ＝ 150ms間隔で出現）
-                nextSpawnDelay = 150;
+                // 通常600msの15倍速（40ms間隔）
+                nextSpawnDelay = 40;
             } else {
                 // 通常モード
                 if (rand < 0.05) {
@@ -143,7 +142,8 @@
                     e.y += e.speed;
                     if (e.y > canvas.height) {
                         if (e.type !== 'friend') {
-                            endGame(isSpeedyHell ? "部長の怒りに触れた..." : "敵に突破された！");
+                            // 改修：部長モード専用の敗北メッセージ
+                            endGame(isSpeedyHell ? "承知するって言ったよな！？" : "敵に突破された！");
                         } else {
                             enemies.splice(i, 1);
                         }
