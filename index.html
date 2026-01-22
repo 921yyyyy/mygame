@@ -44,7 +44,6 @@
         let enemies = [];
         
         let canShoot = true;
-        // 改修：射出ペースを150%に（200ms / 1.5 ≒ 133ms）
         const shootInterval = 133; 
 
         window.addEventListener('touchstart', handleTouch);
@@ -67,13 +66,13 @@
 
             const rand = Math.random();
             if (rand < 0.05) {
-                // 味方
+                // 味方（改修：HPを3に設定）
                 enemies.push({ 
                     x: Math.random() * (canvas.width - 30), y: -30, w: 30, h: 30, 
-                    hp: 1, type: 'friend', speed: 3, color: '#0ff' 
+                    hp: 3, type: 'friend', speed: 3, color: '#0ff' 
                 });
             } else if (rand < 0.15) {
-                // 改修：中ボス (HP 15)
+                // 中ボス (HP 15)
                 enemies.push({ 
                     x: Math.random() * (canvas.width - 70), y: -70, w: 70, h: 70, 
                     hp: 15, type: 'boss', speed: 1, color: '#f0f' 
@@ -117,19 +116,23 @@
                     if (b.x < e.x + e.w && b.x + b.w > e.x && b.y < e.y + e.h && b.y + b.h > e.y) {
                         bullets.splice(bi, 1);
                         
-                        if (e.type === 'friend') {
-                            endGame("味方を撃ってしまった！");
-                            return;
-                        }
-
+                        // 当たったら一律でHPを減らす
                         e.hp -= 1;
+
                         if (e.hp <= 0) {
+                            if (e.type === 'friend') {
+                                // 味方のHPが0になった時だけゲームオーバー
+                                endGame("味方を倒してしまった！");
+                                return;
+                            }
                             enemies.splice(i, 1);
                             score += (e.type === 'boss' ? 1000 : (e.type === 'fast' ? 300 : 100));
                             scoreElement.innerText = score;
                         } else {
+                            // まだ生きている場合の被弾エフェクト
+                            const oldColor = e.color;
                             e.color = '#fff';
-                            setTimeout(() => { e.color = (e.type === 'boss' ? '#f0f' : e.color); }, 50);
+                            setTimeout(() => { e.color = oldColor; }, 50);
                         }
                     }
                 });
